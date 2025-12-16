@@ -19,6 +19,20 @@
 ./bin/raft_kv_store --raft-advertise-addrs r0@127.0.0.1:7890,r1@127.0.0.1:7891,r2@127.0.0.1:7892 --local-index 2 --raft-bind-addr 0.0.0.0:7892 --http-bind-addr 0.0.0.0:8892  --mode create
 ```
 
+# Key 操作
+
+```
+curl -X GET "http://0.0.0.0:8892/put?key=foo&val=bar"
+curl -X GET "http://0.0.0.0:8890/get?key=foo"
+curl -X GET "http://0.0.0.0:8892/delete?key=foo"
+curl -X GET "http://0.0.0.0:8890/list"
+```
+
+# List Raft Members
+
+```
+curl -X GET "http://0.0.0.0:8890/members"
+```
 
 # Add a Member
 
