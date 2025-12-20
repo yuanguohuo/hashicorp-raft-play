@@ -104,27 +104,31 @@ func NewRaftNode(members []raft.Server, localIdx int, localBindAddr string, join
 		return nil, err
 	}
 
-	if !exist {
-		log.Printf("%s: Raft has no existing State\n", string(localServer.ID))
-		if localIdx == 0 && !joinMode {
-			log.Printf("%s: Raft bootstrapping ... \n", string(localServer.ID))
-			err = raft.BootstrapCluster(
-				conf,
-				logStore,
-				stableStore,
-				snapshotStore,
-				localTrans,
-				raft.Configuration{Servers: members})
-			if err != nil {
-				log.Printf("failed to boot strap cluster. %v\n", err)
-				return nil, err
+	// raft.BootstrapCluster() 必须放在 raftInst 创建之前。
+	// 对比：raftInst.BootstrapCluster()
+	/*
+		if !exist {
+			log.Printf("%s: Raft has no existing State\n", string(localServer.ID))
+			if localIdx == 0 && !joinMode {
+				log.Printf("%s: Raft bootstrapping ... \n", string(localServer.ID))
+				err = raft.BootstrapCluster(
+					conf,
+					logStore,
+					stableStore,
+					snapshotStore,
+					localTrans,
+					raft.Configuration{Servers: members})
+				if err != nil {
+					log.Printf("failed to boot strap cluster. %v\n", err)
+					return nil, err
+				}
+			} else {
+				log.Printf("%s: Raft is not the first member, skip bootstrapping ... \n", string(localServer.ID))
 			}
 		} else {
-			log.Printf("%s: Raft is not the first member, skip bootstrapping ... \n", string(localServer.ID))
+			log.Printf("%s: Raft has existing State\n", string(localServer.ID))
 		}
-	} else {
-		log.Printf("%s: Raft has existing State\n", string(localServer.ID))
-	}
+	*/
 
 	raftInst, err := raft.NewRaft(conf, localFSM, logStore, stableStore, snapshotStore, localTrans)
 	if err != nil {
@@ -148,6 +152,21 @@ func NewRaftNode(members []raft.Server, localIdx int, localBindAddr string, join
 		stableStore:   stableStore,
 		snapshotStore: snapshotStore,
 		localFSM:      localFSM,
+	}
+
+	if !exist {
+		log.Printf("%s: Raft has no existing State\n", string(localServer.ID))
+		if localIdx == 0 && !joinMode {
+			log.Printf("%s: Raft bootstrapping ... \n", string(localServer.ID))
+			if f := raftInst.BootstrapCluster(raft.Configuration{Servers: members}); f.Error() != nil {
+				log.Printf("failed to boot strap cluster. %v\n", err)
+				return nil, f.Error()
+			}
+		} else {
+			log.Printf("%s: Raft is not the first member, skip bootstrapping ... \n", string(localServer.ID))
+		}
+	} else {
+		log.Printf("%s: Raft has existing State\n", string(localServer.ID))
 	}
 
 	return r, nil
